@@ -156,7 +156,7 @@ public:
             {
                 /* Simply deny to send the message. */
                 char warnMessage[MAXBUF];
-                snprintf(warnMessage, MAXBUF, "Cannot send message to channel. You are throttled. You may only send %u lines in %u seconds.", f->lines, f->secs);
+                snprintf(warnMessage, MAXBUF, "Cannot send message to channel. You are throttled. You may not send %u or more lines in less than %u seconds.", f->lines, f->secs);
 
                 user->WriteNumeric(404, "%s %s :%s", user->nick.c_str(), chan->name.c_str(), warnMessage);
 
