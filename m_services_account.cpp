@@ -399,7 +399,7 @@ class ModuleServicesAccount : public Module
 		if(agestring && !agestring->empty())		
 			age=atoi(agestring->c_str());
 		std::string *useragestring=accountage.get(user);
-		if(useragestring && useragestring->empty())		
+		if(useragestring && !useragestring->empty())		
 			acctage=atoi(useragestring->c_str());
 
 
