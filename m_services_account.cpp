@@ -323,6 +323,10 @@ class ModuleServicesAccount : public Module
                     			if(age <= ban)
                         			return MOD_RES_DENY;
                 		}
+				else
+				{
+					return MOD_RES_DENY;
+				}
 			}
 		}
 
