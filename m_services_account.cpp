@@ -29,33 +29,15 @@
 
 
 typedef StringExtItem AccountAgeExtItem;
-typedef StringExtItem AccountAgeBanExtItem;
-typedef StringExtItem AccountAgeMuteExtItem;
 
 inline AccountAgeExtItem* GetAccountAgeExtItem() {
 	return static_cast<AccountAgeExtItem*> (ServerInstance->Extensions.GetItem("accountage"));
 }
 
-inline AccountAgeExtItem* GetAccountAgeBanExtItem() {
-	return static_cast<AccountAgeBanExtItem*> (ServerInstance->Extensions.GetItem("accountageban"));
-}
-
-inline AccountAgeExtItem* GetAccountAgeMuteExtItem() {
-	return static_cast<AccountAgeMuteExtItem*> (ServerInstance->Extensions.GetItem("accountagemute"));
-}
-
-
-inline bool is_number(const std::string& s)
-{
-    std::string::const_iterator it = s.begin();
-    while (it != s.end() && std::isdigit(*it)) ++it;
-    return !s.empty() && it == s.end();
-}
-
 class CommandSetAge : public Command
 {
 public:
-	CommandSetAge(Module *parent) : Command(parent, "SETAGE", 3, 3)
+	CommandSetAge(Module *parent) : Command(parent, "SETAGE", 1, 1)
 	{
 		this->syntax = "<age>";
 	}
@@ -63,52 +45,17 @@ public:
 	CmdResult Handle(const std::vector<std::string> &parameters, User *user)
 	{
 		LocalUser *localUser = IS_LOCAL(user);
-//		if(!localUser)
-//		{
+		if(!localUser)
+		{
 			GetAccountAgeExtItem()->set(user,parameters[0]);
-//		}
+            return CMD_SUCCESS;
+		}
+        else
+        {
+            return CMD_FAILURE;
+        }
 	}
 };
-// User mode V - verified for X days
-//class User_V : public ModeHandler
-//{
-//    
-//public:
-//    User_V(Module* Creator) : ModeHandler(Creator, "u_user_age", 'V', PARAM_ALWAYS, MODETYPE_USER) { }
-//    
-//    ModeAction OnModeChange(User* source, User* dest, Channel* channel, std::string &parameter, bool adding)
-//    {
-//        //if (!IS_LOCAL(source))
-//        //{
-//        if(adding)
-//        {
-//            dest->SetMode('V',true);
-//            GetAccountAgeExtItem()->set(dest,parameter);
-//            return MODEACTION_ALLOW;
-//        }
-        
-        //}
-        //else
-        //{
-        //	source->WriteNumeric(500, "%s :Only a server may modify the +V user mode", source->nick.c_str());
-        //}
-        //return MODEACTION_DENY;
-//    }
-//    std::string GetUserParameter(User* useor)
-//    {
-//        return *(GetAccountAgeExtItem()->get(useor));
-//    }
-//    int GetNumParams(bool adding)
-//    {
-//        return 1;
-//    }
-//    void OnParameterMissing(User* user, User* dest, Channel* channel)
-//    {
-//        user->WriteServ("NOTICE %s :*** The user mode +V requires a parameter. Please provide a parameter, e.g. '+V *'.",
-//                        user->nick.c_str());
-//    }
-//};
-
 /** Channel mode +r - mark a channel as identified
  */
 class Channel_r : public ModeHandler
@@ -164,36 +111,6 @@ class User_r : public ModeHandler
 
 /** Channel mode +R - unidentified users cannot join
  */
-//class AChannel_R : public ModeHandler
-//{
-//	AccountAgeBanExtItem &m_ext;
-// public:
-//	AChannel_R(Module* Creator,AccountAgeBanExtItem &e) : ModeHandler(Creator, "reginvite", 'R', PARAM_SETONLY, MODETYPE_CHANNEL), m_ext(e)
-// { }
-//	ModeAction OnModeChange(User* source, User* dest, Channel* channel, std::string &parameter, bool adding)
-//	{
-//
-//		if(adding)
-//		{
-//			if(!is_number(parameter))
-//				return MODEACTION_DENY;
-//			m_ext.set(channel,parameter);
-//			channel->SetModeParam(GetModeChar(),parameter);
-//			return MODEACTION_ALLOW;
-//		}
-//		else
-//		{
-//			if (!channel->IsModeSet(GetModeChar()))
-//				return MODEACTION_DENY;
-//
-//			m_ext.unset(channel);
-//			channel->SetModeParam(GetModeChar(), "");
-//			return MODEACTION_ALLOW;
-//		}
-//		
-//	}
-//};
-
 class AChannel_R : public SimpleChannelModeHandler
 {
  public:
@@ -223,13 +140,11 @@ class ModuleServicesAccount : public Module
 	AUser_R m3;
 	Channel_r m4;
 	User_r m5;
-	//User_V m6;
-	CommandSetAge command;
-	AccountAgeExtItem accountage;
-	AccountAgeBanExtItem accountageban;
-	AccountAgeMuteExtItem accountagemute;
+
 	AccountExtItem accountname;
-	bool checking_ban;
+	CommandSetAge commandSetAge;
+	AccountAgeExtItem accountage;
+    bool checking_ban;
 
 	static bool ReadCGIIRCExt(const char* extname, User* user, const std::string*& out)
 	{
@@ -250,28 +165,27 @@ class ModuleServicesAccount : public Module
 	}
 
  public:
-	ModuleServicesAccount() : m1(this), m2(this), m3(this), m4(this), m5(this),//m6(this),
-		accountname("accountname", this),accountage("accountage",this), accountageban("accountageban",this),
-		accountagemute("accountagemute",this), checking_ban(false),command(this)
+	ModuleServicesAccount() : m1(this), m2(this), m3(this), m4(this), m5(this),
+		accountname("accountname", this), checking_ban(false),commandSetAge(this),accountage("accountage",this)
 	{
 	}
 
 	void init()
 	{
-		ServiceProvider* providerlist[] = { &m1, &m2, &m3, &m4, &m5, &accountname, &accountage, &accountageban, &accountagemute,&command };
+		ServiceProvider* providerlist[] = { &m1, &m2, &m3, &m4, &m5, &accountname ,&accountage,&commandSetAge};
 		ServerInstance->Modules->AddServices(providerlist, sizeof(providerlist)/sizeof(ServiceProvider*));
-		Implementation eventlist[] = { I_OnWhois,I_OnWhoisLine, I_OnUserPreMessage, I_OnUserPreNotice, I_OnUserPreJoin, I_OnCheckBan,
+		Implementation eventlist[] = { I_OnWhois, I_OnUserPreMessage, I_OnUserPreNotice, I_OnUserPreJoin, I_OnCheckBan,
 			I_OnDecodeMetaData, I_On005Numeric, I_OnUserPostNick, I_OnSetConnectClass };
 
 		ServerInstance->Modules->Attach(eventlist, this, sizeof(eventlist)/sizeof(Implementation));
 	}
-	AccountAgeExtItem* GetAccountAgeExtItem() { return &accountage; }
+    AccountAgeExtItem* GetAccountAgeExtItem() { return &accountage; }
 
 	void On005Numeric(std::string &t)
 	{
 		ServerInstance->AddExtBanChar('R');
 		ServerInstance->AddExtBanChar('U');
-		ServerInstance->AddExtBanChar('V');
+        ServerInstance->AddExtBanChar('V');
 	}
 
 	/* <- :twisted.oscnet.org 330 w00t2 w00t2 w00t :is logged in as */
@@ -302,24 +216,6 @@ class ModuleServicesAccount : public Module
 			ServerInstance->SendMode(modechange, ServerInstance->FakeClient);
 		}
 	}
-
- ModResult OnWhoisLine(User* user, User* dest, int &numeric, std::string &text)
-    {
-        /* We use this and not OnWhois because this triggers for remote, too */
-        if (numeric == 312)
-        {
-            std::string *acctage = accountage.get(dest);
-            
-            if (acctage)
-            {
-                //whois.SendLine(320, ": is at least "+acctage+" days old ");
-                ServerInstance->SendWhoisLine(user, dest, 320, "%s %s :%s",user->nick.c_str(), dest->nick.c_str(), acctage->c_str());
-            }
-        }
-        
-        /* Dont block anything */
-        return MOD_RES_PASSTHRU;
-}
 
 	ModResult OnUserPreMessage(User* user,void* dest,int target_type, std::string &text, char status, CUList &exempt_list)
 	{
@@ -384,23 +280,22 @@ class ModuleServicesAccount : public Module
 				if (result)
 					return MOD_RES_DENY;
 			}
-			else  if (mask[0] == 'V')
-        	    	{
-                		std::string *accage = accountage.get(user);
-                		if(accage)
+        		else  if (mask[0] == 'V')
+        		{
+        			std::string *accage = accountage.get(user);
+	            		if(accage)
                 		{
-                    			int age=atoi(accage->c_str());
+                			int age=atoi(accage->c_str());
                     			int ban=atoi(mask.substr(2).c_str());
                     			if(age <= ban)
                         			return MOD_RES_DENY;
                 		}
-				else
+                		else
 				{
 					return MOD_RES_DENY;
 				}
-			}
-		}
-
+		        }
+        }
 		/* If we made it this far then the ban wasn't an ExtBan
 			or the user we were checking for didn't match either ExtBan */
 		return MOD_RES_PASSTHRU;
@@ -415,17 +310,9 @@ class ModuleServicesAccount : public Module
 	{
 		if (!IS_LOCAL(user))
 			return MOD_RES_PASSTHRU;
-		int age=0;
-		int acctage=0;
+
 		std::string *account = accountname.get(user);
 		bool is_registered = account && !account->empty();
-		std::string *agestring=accountageban.get(chan);
-		if(agestring && !agestring->empty())		
-			age=atoi(agestring->c_str());
-		std::string *useragestring=accountage.get(user);
-		if(useragestring && !useragestring->empty())		
-			acctage=atoi(useragestring->c_str());
-
 
 		if (chan)
 		{
@@ -437,12 +324,6 @@ class ModuleServicesAccount : public Module
 					user->WriteNumeric(477, user->nick + " " + chan->name + " :You need to be identified to a registered account to join this channel");
 					return MOD_RES_DENY;
 				}
-				//if(acctage<age)
-				//{
-				//	user->WriteNumeric(477, user->nick + " " + chan->name + " :Your account needs to be "+agestring->c_str() +" to enter this channel");
-				//	return MOD_RES_DENY;
-				//}
-//
 			}
 		}
 		return MOD_RES_PASSTHRU;
