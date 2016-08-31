@@ -27,75 +27,57 @@
 #include "inspircd.h"
 
 
+typedef StringExtItem AccountAgeExtItem;
 
+inline AccountAgeExtItem* GetAccountAgeExtItem() {
+	return static_cast<AccountAgeExtItem*> (ServerInstance->Extensions.GetItem("accountage"));
+}
 
-/** Channel mode +R - unidentified users cannot join
-
-class AChannel_R : public SimpleChannelModeHandler
+class CommandSetAge : public Command
 {
- public:
-	AChannel_R(Module* Creator) : SimpleChannelModeHandler(Creator, "reginvite", 'R') { }
-};
- */
-
-class User_V : public ModeHandler
-{
-    
 public:
-    User_V(Module* Creator) : ModeHandler(Creator, "u_user_age", 'V', PARAM_ALWAYS, MODETYPE_USER) { }
-    
-    ModeAction OnModeChange(User* source, User* dest, Channel* channel, std::string &parameter, bool adding)
-    {
-        //if (!IS_LOCAL(source))
-        //{
-        if(adding)
+	CommandSetAge(Module *parent) : Command(parent, "SETAGE", 1, 1)
+	{
+		this->syntax = "<age>";
+	}
+
+	CmdResult Handle(const std::vector<std::string> &parameters, User *user)
+	{
+		LocalUser *localUser = IS_LOCAL(user);
+		if(!localUser)
+		{
+			GetAccountAgeExtItem()->set(user,parameters[0]);
+            return CMD_SUCCESS;
+		}
+        else
         {
-            dest->SetMode('V',true);
-            GetAccountAgeExtItem()->set(dest,parameter);
-            return MODEACTION_ALLOW;
+            return CMD_FAILURE;
         }
-        
-        //}
-        //else
-        //{
-        //	source->WriteNumeric(500, "%s :Only a server may modify the +V user mode", source->nick.c_str());
-        //}
-        //return MODEACTION_DENY;
-    }
-    std::string GetUserParameter(User* useor)
-    {
-        return *(GetAccountAgeExtItem()->get(useor));
-    }
-    int GetNumParams(bool adding)
-    {
-        return 1;
-    }
-    void OnParameterMissing(User* user, User* dest, Channel* channel)
-    {
-        user->WriteServ("NOTICE %s :*** The user mode +V requires a parameter. Please provide a parameter, e.g. '+V *'.",
-                        user->nick.c_str());
-    }
+	}
 };
+
+
+
 
 class ModuleServicesAge : public Module
 
 {
 	//AChannel_R m1;
-	User_V m5;
+	CommandSetAge commandSetAge;
 	AccountAgeExtItem accountage;
     
 	bool checking_ban;
 
 
  public:
-	ModuleServicesAge() : m5(this),
+	ModuleServicesAge() : commandSetAge(this),
 		accountage("accountage", this), checking_ban(false)
 	{
 	}
 
 	void init()
 	{
-		ServiceProvider* providerlist[] = {   &m5, &accountage };
+		ServiceProvider* providerlist[] = {   &commandSetAge, &accountage };
 		ServerInstance->Modules->AddServices(providerlist, sizeof(providerlist)/sizeof(ServiceProvider*));
         Implementation eventlist[] = { I_OnCheckBan,I_OnWhoisLine, I_On005Numeric };
         ServerInstance->Modules->Attach(eventlist, this, sizeof(eventlist)/sizeof(Implementation));
@@ -119,8 +101,9 @@ class ModuleServicesAge : public Module
             
             if (acctage)
             {
-                whois.SendLine(320, ": is at least "+acctage+" days old ");
-                ServerInstance->SendWhoisLine(user, dest, 320, "%s %s :%s",user->nick.c_str(), dest->nick.c_str(), sprintf();
+		char buffer [50];
+		sprintf("account is at least %s days old",acctage->c_str());
+                ServerInstance->SendWhoisLine(user, dest, 320, "%s %s :%s",user->nick.c_str(), dest->nick.c_str(), buffer);
             }
         }
         
@@ -134,14 +117,18 @@ class ModuleServicesAge : public Module
         {
             if (mask[0] == 'V')
             {
-                std::string *accage = accountage.get(user);
-                if(accage)
-                {
-                    int age=atoi(accage->c_str());
-                    int ban=atoi(mask.substr(2).c_str());
-                    if(age <= ban)
-                        return MOD_RES_DENY;
-                }
+               std::string *accage = accountage.get(user);
+	            		if(accage)
+                		{
+                			int age=atoi(accage->c_str());
+                    			int ban=atoi(mask.substr(2).c_str());
+                    			if(age <= ban)
+                        			return MOD_RES_DENY;
+                		}
+                		else
+				{
+					return MOD_RES_DENY;
+				}
             }
         }
         
@@ -152,7 +139,7 @@ class ModuleServicesAge : public Module
 
 	Version GetVersion()
 	{
-		return Version("Provides support for ircu-style services accounts, including umode +V, etc.",VF_OPTCOMMON|VF_VENDOR);
+		return Version("Adding the new command.",VF_OPTCOMMON|VF_VENDOR);
 	}
 };
 
