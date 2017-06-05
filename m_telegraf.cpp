@@ -58,6 +58,8 @@ struct Metrics
 
 	std::clock_t getAverageLoopTime()
 	{
+		if (loopTimes.empty())
+			return 0;
 		std::clock_t total = 0;
 		for (LoopTimes::size_type i = 0; i < loopTimes.size(); ++i)
 			total += loopTimes[i];
