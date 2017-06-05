@@ -29,7 +29,7 @@
 #include "inspircd.h"
 #include "commands/cmd_whowas.h"
 
-static const std::string cmd_actions[] = {"start", "stop", "restart", "status"};
+static const std::string cmd_actions[] = {"start", "stop", "restart", "status", "sample"};
 
 struct Metrics
 {
@@ -176,7 +176,6 @@ struct LoopLagTimer : public Timer
 
 class TelegrafSocket : public BufferedSocket
 {
-	TelegrafLine line;
 	TelegrafModule *creator;
 
  public:
@@ -193,6 +192,8 @@ class TelegrafSocket : public BufferedSocket
 	}
 
 	void SendMetrics();
+
+	TelegrafLine GetMetrics();
 };
 
 class TelegrafCommand : public Command
@@ -387,17 +388,18 @@ CmdResult TelegrafCommand::Handle(const std::vector<std::string> &parameters, Us
 	}
 
 	TelegrafModule *mod = static_cast<TelegrafModule *> (static_cast<Module *> (creator));
+	std::vector<std::string> messages;
 	std::string message;
 	if (parameters[0] == "start")
 	{
 		if (!mod->tSock)
 		{
 			mod->StartMetrics();
-			message = "Telegraf metrics started";
+			messages.push_back("Telegraf metrics started");
 		}
 		else
 		{
-			message = "Telegraf metrics already running";
+			messages.push_back("Telegraf metrics already running");
 		}
 	}
 	else if (parameters[0] == "stop")
@@ -406,11 +408,11 @@ CmdResult TelegrafCommand::Handle(const std::vector<std::string> &parameters, Us
 		{
 			mod->shouldReconnect = false;
 			mod->StopMetrics();
-			message = "Telegraf metrics stopped";
+			messages.push_back("Telegraf metrics stopped");
 		}
 		else
 		{
-			message = "Telegraf metrics not running";
+			messages.push_back("Telegraf metrics not running");
 		}
 	}
 	else if (parameters[0] == "restart")
@@ -419,22 +421,46 @@ CmdResult TelegrafCommand::Handle(const std::vector<std::string> &parameters, Us
 		{
 			mod->StopMetrics();
 			mod->StartMetrics(true);
-			message = "Telegraf metrics restarted";
+			messages.push_back("Telegraf metrics restarted");
 		}
 		else
 		{
-			message = "Telegraf metrics not running";
+			messages.push_back("Telegraf metrics not running");
 		}
 	}
 	else if (parameters[0] == "status")
 	{
 		if (mod->tSock)
 		{
-			message = "Telegraf metrics running";
+			messages.push_back("Telegraf metrics running");
 		}
 		else
 		{
-			message = "Telegraf metrics not running";
+			messages.push_back("Telegraf metrics not running");
+		}
+	}
+	else if (parameters[0] == "sample")
+	{
+		if (mod->tSock)
+		{
+			TelegrafLine line = mod->tSock->GetMetrics();
+			messages.push_back("Name: " + line.name);
+			messages.push_back("Tags:");
+			for (std::map<std::string, std::string>::const_iterator i = line.tags.begin(); i != line.tags.end(); ++i)
+			{
+				messages.push_back("    " + i->first + "=" + i->second);
+			}
+			messages.push_back("Values:");
+			for (std::map<std::string, std::string>::const_iterator i = line.fields.begin();
+				 i != line.fields.end(); ++i)
+			{
+				messages.push_back("    " + i->first + "=" + i->second);
+			}
+			messages.push_back("End of metrics");
+		}
+		else
+		{
+			messages.push_back("Telegraf metrics don't appear to be running");
 		}
 	}
 	else
@@ -442,15 +468,16 @@ CmdResult TelegrafCommand::Handle(const std::vector<std::string> &parameters, Us
 		return CMD_FAILURE;
 	}
 
-	if (message.size())
+	for (std::vector<std::string>::size_type i = 0; i < messages.size(); ++i)
 	{
 		if (parameters.size() > 1)
 			user->SendText(":%s NOTICE %s :*** From %s: %s", ServerInstance->Config->ServerName.c_str(),
-						   user->nick.c_str(), ServerInstance->Config->ServerName.c_str(), message.c_str());
+						   user->nick.c_str(), ServerInstance->Config->ServerName.c_str(), messages[i].c_str());
 		else
 			user->SendText(":%s NOTICE %s :*** %s", ServerInstance->Config->ServerName.c_str(), user->nick.c_str(),
-						   message.c_str());
+						   messages[i].c_str());
 	}
+
 	return CMD_SUCCESS;
 }
 
@@ -463,6 +490,17 @@ void TelegrafSocket::OnError(BufferedSocketError e)
 void TelegrafSocket::SendMetrics()
 {
 	ServerInstance->Logs->Log("TELEGRAF", DEBUG, "Sending Telegraf Metrics..");
+	TelegrafLine line = GetMetrics();
+	creator->metrics.loopTimes.clear();
+	creator->metrics.loopTimes.reserve(10);
+	std::string out(line.format());
+	WriteData(out);
+	ServerInstance->Logs->Log("TELEGRAF", DEBUG, "Sent Telegraf metrics: %s", out.c_str());
+}
+
+TelegrafLine TelegrafSocket::GetMetrics()
+{
+	TelegrafLine line;
 	line.name = "ircd";
 	line.tags["server"] = ServerInstance->Config->ServerName;
 	line.fields["users"] = ConvToStr(ServerInstance->Users->LocalUserCount());
@@ -507,12 +545,7 @@ void TelegrafSocket::SendMetrics()
 	line.fields["cmd_unknown"] = ConvToStr(ServerInstance->stats->statsUnknown);
 	line.fields["sockets"] = ConvToStr(ServerInstance->SE->GetUsedFds());
 	line.fields["main_loop_time"] = ConvToStr(creator->metrics.getAverageLoopTime());
-	creator->metrics.loopTimes.clear();
-	creator->metrics.loopTimes.reserve(10);
-	std::string out(line.format());
-	WriteData(out);
-	ServerInstance->Logs->Log("TELEGRAF", DEBUG, "Sent Telegraf metrics: %s", out.c_str());
-	line.clear();
+	return line;
 }
 
 MODULE_INIT(TelegrafModule)
