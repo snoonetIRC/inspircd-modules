@@ -26,6 +26,11 @@
  * 			reconnect="60">
  */
 
+/* $ModDesc: Provides IRCd metrics to a locally running Telegraf instance. */
+/* $ModAuthor: linuxdaemon */
+/* $ModAuthorMail: linuxdaemon@snoonet.org */
+/* $ModDepends: core 2.0 */
+
 #include "inspircd.h"
 #include "commands/cmd_whowas.h"
 

@@ -1,3 +1,8 @@
+/* $ModDesc: Adds a command to forcibly sync all channel modes across the network. */
+/* $ModAuthor: linuxdaemon */
+/* $ModAuthorMail: linuxdaemon@snoonet.org */
+/* $ModDepends: core 2.0 */
+
 #include "inspircd.h"
 
 namespace

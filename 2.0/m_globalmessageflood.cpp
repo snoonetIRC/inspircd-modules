@@ -28,6 +28,7 @@
 #include "inspircd.h"
 
 /* $ModDesc: Provides channel mode +x (oper only top-level channel flood protection with SNOMASK +F) */
+/* $ModDepends: core 2.0 */
 
 /** Holds flood settings and state for mode +x
  */

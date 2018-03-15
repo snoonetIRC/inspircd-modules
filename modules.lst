@@ -1,0 +1,20 @@
+module m_globalmessageflood 2.0.29 https://raw.github.com/snoonetIRC/inspircd-modules/91dca20d5ff439e69b2c86a40bad3ca74d19fcdb/2.0/m_globalmessageflood.cpp
+ description Provides channel mode +x (oper only top-level channel flood protection with SNOMASK +F)
+ depends core 2.0
+module m_ircv3_sts 2.0.29 https://raw.github.com/snoonetIRC/inspircd-modules/91dca20d5ff439e69b2c86a40bad3ca74d19fcdb/2.0/m_ircv3_sts.cpp
+ description Implements IRCv3 STS (Strict Transport Security) policy advertisement
+ depends core 2.0
+module m_remoteuser 2.0.29 https://raw.github.com/snoonetIRC/inspircd-modules/91dca20d5ff439e69b2c86a40bad3ca74d19fcdb/2.0/m_remoteuser.cpp
+ description Provides inter-server REMOTEUSER
+ depends core 2.0
+module m_slowmode 2.0.29 https://raw.github.com/snoonetIRC/inspircd-modules/91dca20d5ff439e69b2c86a40bad3ca74d19fcdb/2.0/m_slowmode.cpp
+ description Provides channel mode +U (enables snoonet slowmode)
+ depends core 2.0
+module m_sync_modes 2.0.29 https://raw.github.com/snoonetIRC/inspircd-modules/91dca20d5ff439e69b2c86a40bad3ca74d19fcdb/2.0/m_sync_modes.cpp
+ description Adds a command to forcibly sync all channel modes across the network.
+ depends core 2.0
+module m_telegraf 2.0.29 https://raw.github.com/snoonetIRC/inspircd-modules/91dca20d5ff439e69b2c86a40bad3ca74d19fcdb/2.0/m_telegraf.cpp
+ description Provides IRCd metrics to a locally running Telegraf instance.
+ depends core 2.0
+module m_userscore 2.0.29 https://raw.github.com/snoonetIRC/inspircd-modules/91dca20d5ff439e69b2c86a40bad3ca74d19fcdb/2.0/m_userscore.cpp
+ depends core 2.0

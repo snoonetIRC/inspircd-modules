@@ -31,6 +31,7 @@
 #include "inspircd.h"
 
 /* $ModDesc: Provides channel mode +U (enables snoonet slowmode) */
+/* $ModDepends: core 2.0 */
 
 /** Holds flag settings and state for mode +U
  */
