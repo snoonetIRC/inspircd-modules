@@ -1,6 +1,7 @@
 /*
  * InspIRCd -- Internet Relay Chat Daemon
  *
+ *   Copyright (C) 2018 linuxdaemon <linuxdaemon@snoonet.org>
  *   Copyright (C) 2009 Daniel De Graaf <danieldg@inspircd.org>
  *   Copyright (C) 2008 Pippijn van Steenhoven <pip88nl@gmail.com>
  *   Copyright (C) 2007 Robin Burchell <robin+git@viroteck.net>
@@ -21,9 +22,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-/* Make numbers into strings... I need this for the SNOTICE because I don't know C++ */
-#include <sstream>
 
 #include "inspircd.h"
 
@@ -146,8 +144,8 @@ class ModuleGlobalMsgFlood : public Module
 		ServerInstance->Modules->AddService(mf);
 		ServerInstance->Modules->AddService(mf.ext);
 
-	        /* Enables Flood announcements for everyone with +s +F */
-        	ServerInstance->SNO->EnableSnomask('F',"FLOODANNOUNCE");
+		/* Enables Flood announcements for everyone with +s +F */
+		ServerInstance->SNO->EnableSnomask('F',"FLOODANNOUNCE");
 
 		Implementation eventlist[] = { I_OnUserPreNotice, I_OnUserPreMessage };
 		ServerInstance->Modules->Attach(eventlist, this, sizeof(eventlist)/sizeof(Implementation));
@@ -159,7 +157,7 @@ class ModuleGlobalMsgFlood : public Module
 			return MOD_RES_PASSTHRU;
 
 		if (user->IsModeSet('o'))
-                        return MOD_RES_PASSTHRU;
+			return MOD_RES_PASSTHRU;
 
 		globalfloodsettings *f = mf.ext.get(dest);
 		if (f)
@@ -168,17 +166,9 @@ class ModuleGlobalMsgFlood : public Module
 			{
 				f->clear(user);
 				/* Generate the SNOTICE when someone triggers the flood limit */
-				std::string floodlines;
-				std::stringstream out;
-				out << f->lines;
-				floodlines = out.str();
 
-				std::string floodsecs;
-                                std::stringstream out2;
-                                out2 << f->secs;
-                                floodsecs = out2.str();
-
-				ServerInstance->SNO->WriteGlobalSno('F', "Global channel flood triggered by " + user->nick + "@" + user->host + " in " + dest->name + " (limit was " + floodlines + " lines in " + floodsecs + " secs)");
+				ServerInstance->SNO->WriteGlobalSno('F', "Global channel flood triggered by %s in %s (limit was %u lines in %u secs)",
+													user->GetFullRealHost().c_str(), dest->name.c_str(), f->lines, f->secs);
 
 				return MOD_RES_DENY;
 			}
