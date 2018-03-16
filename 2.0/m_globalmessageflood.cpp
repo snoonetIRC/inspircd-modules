@@ -169,8 +169,8 @@ class ModuleGlobalMsgFlood : public Module
 				f->clear(user);
 				/* Generate the SNOTICE when someone triggers the flood limit */
 
-				ServerInstance->SNO->WriteGlobalSno('F', "Global channel flood triggered by %s in %s (limit was %u lines in %u secs)",
-													user->GetFullRealHost().c_str(), dest->name.c_str(), f->lines, f->secs);
+				ServerInstance->SNO->WriteGlobalSno('F', "Global channel flood triggered by %s (%s) in %s (limit was %u lines in %u secs)",
+													user->GetFullRealHost().c_str(), user->GetFullHost().c_str(), dest->name.c_str(), f->lines, f->secs);
 
 				return MOD_RES_DENY;
 			}
