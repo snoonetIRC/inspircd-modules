@@ -28,6 +28,8 @@
 /* $ModDesc: Provides channel mode +x (oper only top-level channel flood protection with SNOMASK +F) */
 /* $ModDepends: core 2.0 */
 
+typedef std::map<User*, unsigned int> counter_t;
+
 /** Holds flood settings and state for mode +x
  */
 class globalfloodsettings
@@ -37,7 +39,7 @@ class globalfloodsettings
 	unsigned int secs;
 	unsigned int lines;
 	time_t reset;
-	std::map<User*, unsigned int> counters;
+	counter_t counters;
 
 	globalfloodsettings(bool a, int b, int c) : ban(a), secs(b), lines(c)
 	{
@@ -57,7 +59,7 @@ class globalfloodsettings
 
 	void clear(User* who)
 	{
-		std::map<User*, unsigned int>::iterator iter = counters.find(who);
+		counter_t::iterator iter = counters.find(who);
 		if (iter != counters.end())
 		{
 			counters.erase(iter);
