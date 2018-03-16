@@ -117,7 +117,7 @@ class GlobalMsgFlood : public ModeHandler
 			if (!channel->IsModeSet('x'))
 				return MODEACTION_DENY;
 
-			if (!source->IsModeSet('o'))
+			if (IS_LOCAL(source) && !source->IsModeSet('o'))
 			{
 				source->WriteNumeric(481, "%s %s :Permission Denied - Only operators may set channel mode x",source->nick.c_str(),channel->name.c_str());
 				return MODEACTION_DENY;
