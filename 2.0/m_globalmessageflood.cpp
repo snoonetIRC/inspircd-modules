@@ -146,8 +146,8 @@ class ModuleGlobalMsgFlood : public Module
 		ServerInstance->Modules->AddService(mf);
 		ServerInstance->Modules->AddService(mf.ext);
 
-		/* Enables Flood announcements for everyone with +s +F */
-		ServerInstance->SNO->EnableSnomask('F',"FLOODANNOUNCE");
+		/* Enables Flood announcements for everyone with +s +f */
+		ServerInstance->SNO->EnableSnomask('f', "FLOOD");
 
 		Implementation eventlist[] = { I_OnUserPreNotice, I_OnUserPreMessage };
 		ServerInstance->Modules->Attach(eventlist, this, sizeof(eventlist)/sizeof(Implementation));
@@ -169,7 +169,7 @@ class ModuleGlobalMsgFlood : public Module
 				f->clear(user);
 				/* Generate the SNOTICE when someone triggers the flood limit */
 
-				ServerInstance->SNO->WriteGlobalSno('F', "Global channel flood triggered by %s (%s) in %s (limit was %u lines in %u secs)",
+				ServerInstance->SNO->WriteGlobalSno('f', "Global channel flood triggered by %s (%s) in %s (limit was %u lines in %u secs)",
 													user->GetFullRealHost().c_str(), user->GetFullHost().c_str(), dest->name.c_str(), f->lines, f->secs);
 
 				return MOD_RES_DENY;
