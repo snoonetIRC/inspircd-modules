@@ -1,6 +1,7 @@
 /*
  * InspIRCd -- Internet Relay Chat Daemon
  *
+ *   Copyright (C) 2018 linuxdaemon <linuxdaemon@snoonet.org>
  *   Copyright (C) 2009 Daniel De Graaf <danieldg@inspircd.org>
  *   Copyright (C) 2008 Pippijn van Steenhoven <pip88nl@gmail.com>
  *   Copyright (C) 2007 Robin Burchell <robin+git@viroteck.net>
@@ -22,13 +23,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* Make numbers into strings... I need this for the SNOTICE because I don't know C++ */
-#include <sstream>
-
 #include "inspircd.h"
 
 /* $ModDesc: Provides channel mode +x (oper only top-level channel flood protection with SNOMASK +F) */
 /* $ModDepends: core 2.0 */
+
+typedef std::map<User*, unsigned int> counter_t;
 
 /** Holds flood settings and state for mode +x
  */
@@ -39,7 +39,7 @@ class globalfloodsettings
 	unsigned int secs;
 	unsigned int lines;
 	time_t reset;
-	std::map<User*, unsigned int> counters;
+	counter_t counters;
 
 	globalfloodsettings(bool a, int b, int c) : ban(a), secs(b), lines(c)
 	{
@@ -59,7 +59,7 @@ class globalfloodsettings
 
 	void clear(User* who)
 	{
-		std::map<User*, unsigned int>::iterator iter = counters.find(who);
+		counter_t::iterator iter = counters.find(who);
 		if (iter != counters.end())
 		{
 			counters.erase(iter);
@@ -117,9 +117,9 @@ class GlobalMsgFlood : public ModeHandler
 			if (!channel->IsModeSet('x'))
 				return MODEACTION_DENY;
 
-			if (!source->IsModeSet('o'))
+			if (IS_LOCAL(source) && !source->HasModePermission(this->GetModeChar(), this->GetModeType()))
 			{
-				source->WriteNumeric(481, "%s %s :Permission Denied - Only operators may set channel mode x",source->nick.c_str(),channel->name.c_str());
+				source->WriteNumeric(ERR_NOPRIVILEGES, "%s %s :Permission Denied - Only operators may set channel mode x",source->nick.c_str(),channel->name.c_str());
 				return MODEACTION_DENY;
 			}
 
@@ -146,8 +146,8 @@ class ModuleGlobalMsgFlood : public Module
 		ServerInstance->Modules->AddService(mf);
 		ServerInstance->Modules->AddService(mf.ext);
 
-	        /* Enables Flood announcements for everyone with +s +F */
-        	ServerInstance->SNO->EnableSnomask('F',"FLOODANNOUNCE");
+		/* Enables Flood announcements for everyone with +s +f */
+		ServerInstance->SNO->EnableSnomask('f', "FLOOD");
 
 		Implementation eventlist[] = { I_OnUserPreNotice, I_OnUserPreMessage };
 		ServerInstance->Modules->Attach(eventlist, this, sizeof(eventlist)/sizeof(Implementation));
@@ -159,7 +159,7 @@ class ModuleGlobalMsgFlood : public Module
 			return MOD_RES_PASSTHRU;
 
 		if (user->IsModeSet('o'))
-                        return MOD_RES_PASSTHRU;
+			return MOD_RES_PASSTHRU;
 
 		globalfloodsettings *f = mf.ext.get(dest);
 		if (f)
@@ -168,17 +168,9 @@ class ModuleGlobalMsgFlood : public Module
 			{
 				f->clear(user);
 				/* Generate the SNOTICE when someone triggers the flood limit */
-				std::string floodlines;
-				std::stringstream out;
-				out << f->lines;
-				floodlines = out.str();
 
-				std::string floodsecs;
-                                std::stringstream out2;
-                                out2 << f->secs;
-                                floodsecs = out2.str();
-
-				ServerInstance->SNO->WriteGlobalSno('F', "Global channel flood triggered by " + user->nick + "@" + user->host + " in " + dest->name + " (limit was " + floodlines + " lines in " + floodsecs + " secs)");
+				ServerInstance->SNO->WriteGlobalSno('f', "Global channel flood triggered by %s (%s) in %s (limit was %u lines in %u secs)",
+													user->GetFullRealHost().c_str(), user->GetFullHost().c_str(), dest->name.c_str(), f->lines, f->secs);
 
 				return MOD_RES_DENY;
 			}
