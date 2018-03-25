@@ -4,7 +4,7 @@ module m_globalmessageflood 2.0.32 https://raw.github.com/snoonetIRC/inspircd-mo
 module m_remoteuser 2.0.29 https://raw.github.com/snoonetIRC/inspircd-modules/91dca20d5ff439e69b2c86a40bad3ca74d19fcdb/2.0/m_remoteuser.cpp
  description Provides inter-server REMOTEUSER
  depends core 2.0
-module m_slowmode 2.0.30 https://raw.github.com/snoonetIRC/inspircd-modules/5ec967b08136b258f7884683fa6a86db008e5887/2.0/m_slowmode.cpp
+module m_slowmode_user 2.0.34 https://raw.github.com/snoonetIRC/inspircd-modules/0666d8ad9b7b8f566c51f1fdb430f5f633a145e3/2.0/m_slowmode_user.cpp
  description Provides channel mode +U (enables snoonet slowmode)
  depends core 2.0
 module m_sync_modes 2.0.30 https://raw.github.com/snoonetIRC/inspircd-modules/5ec967b08136b258f7884683fa6a86db008e5887/2.0/m_sync_modes.cpp
