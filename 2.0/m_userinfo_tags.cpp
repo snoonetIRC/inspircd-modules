@@ -152,6 +152,7 @@ class UserInfoCommand : public Command
 
 class UserInfoModule : public Module
 {
+	bool onlyOpersSeeTags;
 	UserInfoCommand cmd;
 
 	bool MatchInfo(User* u, const std::string& mask)
@@ -168,7 +169,7 @@ class UserInfoModule : public Module
 	}
 
  public:
-	UserInfoModule() : cmd(this)
+	UserInfoModule() : onlyOpersSeeTags(false), cmd(this)
 	{
 	}
 
@@ -178,6 +179,13 @@ class UserInfoModule : public Module
 		ServerInstance->Modules->AddService(cmd.ext);
 		Implementation eventlist[] = { I_OnCheckBan, I_OnWhois, I_On005Numeric };
 		ServerInstance->Modules->Attach(eventlist, this, sizeof(eventlist)/sizeof(Implementation));
+		OnRehash(NULL);
+	}
+
+	void OnRehash(User*)
+	{
+		ConfigTag* tag = ServerInstance->Config->ConfValue("userinfo");
+		onlyOpersSeeTags = tag->getBool("operonly");
 	}
 
 	ModResult OnCheckBan(User* user, Channel* chan, const std::string& mask)
@@ -192,6 +200,9 @@ class UserInfoModule : public Module
 
 	void OnWhois(User* user, User* dest)
 	{
+		if (onlyOpersSeeTags && !user->HasPrivPermission("users/auspex"))
+			return;
+
 		UserInfo* info = cmd.ext.get_user(dest);
 		if (info->empty())
 			return;
