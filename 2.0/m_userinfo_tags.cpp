@@ -10,7 +10,9 @@
 enum
 {
 	RPL_TAGS = 752,
-	RPL_NOTAGS = 753
+	RPL_NOTAGS = 753,
+
+	RPL_TAG_WHOIS = 310
 };
 
 typedef std::set<std::string> UserInfo;
@@ -101,6 +103,8 @@ class UserInfoCommand : public Command
 {
  public:
 	UserInfoExt ext;
+	std::string validTagChars;
+	std::string::size_type maxTagLength;
 
 	UserInfoCommand(Module *me) : Command(me, "USERINFO", 1), ext(me)
 	{
@@ -160,6 +164,12 @@ class UserInfoCommand : public Command
 
 	bool isValidTag(const std::string &tag)
 	{
+		if (maxTagLength > 0 && tag.length() > maxTagLength)
+			return false;
+
+		if (!validTagChars.empty() && tag.find_first_not_of(validTagChars) != std::string::npos)
+			return false;
+
 		return tag.find_first_of(", :") == std::string::npos;
 	}
 };
@@ -200,6 +210,8 @@ class UserInfoModule : public Module
 	{
 		ConfigTag* tag = ServerInstance->Config->ConfValue("userinfo");
 		onlyOpersSeeTags = tag->getBool("operonly");
+		cmd.validTagChars = tag->getString("tagchars", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_.");
+		cmd.maxTagLength = tag->getInt("taglength", 32);
 	}
 
 	ModResult OnCheckBan(User* user, Channel* chan, const std::string& mask)
@@ -222,7 +234,7 @@ class UserInfoModule : public Module
 			return;
 
 		std::string serealized = cmd.ext.serialize(FORMAT_USER, dest, info);
-		ServerInstance->SendWhoisLine(user, dest, 310, "%s %s :has tags: %s", user->nick.c_str(), dest->nick.c_str(), serealized.c_str());
+		ServerInstance->SendWhoisLine(user, dest, RPL_TAG_WHOIS, "%s %s :has tags: %s", user->nick.c_str(), dest->nick.c_str(), serealized.c_str());
 	}
 
 	void On005Numeric(std::string &output)
