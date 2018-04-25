@@ -6,6 +6,7 @@
 #include "inspircd.h"
 
 #define EXTBAN_CHAR 't'
+#define MAX_TAG_LINE 320
 
 enum
 {
@@ -15,8 +16,99 @@ enum
 	RPL_TAG_WHOIS = 310
 };
 
-typedef std::set<std::string> UserInfo;
-typedef std::vector<std::pair<std::string, bool> > TagInfo;
+typedef std::string Tag;
+typedef std::set<Tag> TagSet;
+typedef std::map<Tag, bool> TagMask;
+
+class UserInfo
+{
+public:
+	UserInfo() : tagStrSize(0)
+	{
+	}
+
+	bool AddTag(const Tag& tag)
+	{
+		if ((tagStrSize + tag.length() + 1) > MAX_TAG_LINE)
+			return false;
+
+		if (tags.insert(tag).second)
+			tagStrSize += tag.length() + 1;
+
+		return true;
+	}
+
+	void DelTag(const Tag& tag)
+	{
+		if (tags.erase(tag))
+			tagStrSize -= (tag.length() + 1);
+	}
+
+	std::string str() const
+	{
+		if (this->tags.empty())
+			return "";
+
+		std::ostringstream sstr;
+
+		for (TagSet::const_iterator it = tags.begin(), it_end = tags.end(); it != it_end; ++it)
+			sstr << ',' << *it;
+
+		return sstr.str().substr(1);
+	}
+
+	void fromStr(const std::string& value)
+	{
+		irc::commasepstream stream(value);
+		std::string token;
+		while (stream.GetToken(token))
+		{
+			if (token.empty())
+				continue;
+
+			AddTag(token);
+		}
+	}
+
+	bool MatchTagMask(const TagMask& tm) const
+	{
+		for (TagMask::const_iterator it = tm.begin(), it_end = tm.end(); it != it_end; ++it)
+			if ((tags.count(it->first) != 0) != it->second)
+				return false;
+
+		return true;
+	}
+
+	bool ApplyTagMask(const TagMask& tm)
+	{
+		for (TagMask::const_iterator it = tm.begin(), it_end = tm.end(); it != it_end; ++it)
+		{
+			if (it->second)
+			{
+				if (!AddTag(it->first))
+					return false;
+			}
+			else
+				DelTag(it->first);
+		}
+		return true;
+	}
+
+	void clear()
+	{
+		tags.clear();
+		tagStrSize = 0;
+	}
+
+	bool empty() const
+	{
+		return tags.empty();
+	}
+
+private:
+	TagSet tags;
+	Tag::size_type tagStrSize;
+};
 
 class UserInfoExt : public SimpleExtItem<UserInfo>
 {
@@ -30,15 +122,7 @@ class UserInfoExt : public SimpleExtItem<UserInfo>
 		if (!item)
 			return "";
 
-		std::stringstream sstr;
-		UserInfo* data = static_cast<UserInfo*>(item);
-		if (data->empty())
-			return "";
-
-		for (UserInfo::const_iterator it = data->begin(), it_end = data->end(); it != it_end; ++it)
-			sstr << ',' << *it;
-
-		return sstr.str().substr(1);
+		return static_cast<UserInfo*>(item)->str();
 	}
 
 	void unserialize(SerializeFormat format, Extensible* container, const std::string& value)
@@ -46,15 +130,7 @@ class UserInfoExt : public SimpleExtItem<UserInfo>
 		UserInfo* info = new UserInfo;
 		set(container, info);
 
-		irc::commasepstream stream(value);
-		std::string token;
-		while (stream.GetToken(token))
-		{
-			if (token.empty())
-				continue;
-
-			info->insert(token);
-		}
+		info->fromStr(value);
 	}
 
 	UserInfo *get_user(User *u)
@@ -70,9 +146,9 @@ class UserInfoExt : public SimpleExtItem<UserInfo>
 	}
 };
 
-static TagInfo parseTagInfo(const std::string &text)
+static TagMask parseTagMask(const std::string& text)
 {
-	TagInfo ti;
+	TagMask tm;
 	irc::commasepstream stream(text);
 	std::string token;
 	while (stream.GetToken(token))
@@ -94,9 +170,9 @@ static TagInfo parseTagInfo(const std::string &text)
 				break;
 		}
 
-		ti.push_back(std::make_pair(token, add));
+		tm[token] = add;
 	}
-	return ti;
+	return tm;
 }
 
 class UserInfoCommand : public Command
@@ -116,16 +192,19 @@ class UserInfoCommand : public Command
 	bool ApplyTagMaskToUser(const std::string& mask, User* user)
 	{
 		UserInfo* info = ext.get_user(user);
-		TagInfo ti = parseTagInfo(mask);
-		for (TagInfo::const_iterator it = ti.begin(), it_end = ti.end(); it != it_end; ++it)
+		TagMask tm = parseTagMask(mask);
+		for (TagMask::const_iterator it = tm.begin(), it_end = tm.end(); it != it_end; ++it)
 		{
 			if (!isValidTag(it->first))
 				return false;
 
 			if (it->second)
-				info->insert(it->first);
+			{
+				if (!info->AddTag(it->first))
+					return false;
+			}
 			else
-				info->erase(it->first);
+				info->DelTag(it->first);
 		}
 
 		std::string seralized = ext.serialize(FORMAT_USER, user, info);
@@ -144,12 +223,11 @@ class UserInfoCommand : public Command
 			return CMD_FAILURE;
 		}
 
-
 		if (parameters.size() > 1)
 		{
 			if (!ApplyTagMaskToUser(parameters[1], target_user))
 			{
-				user->WriteServ("NOTICE %s :Invalid tag name", user->nick.c_str());
+				user->WriteServ("NOTICE %s :Unable to add tags", user->nick.c_str());
 				return CMD_FAILURE;
 			}
 		}
@@ -188,15 +266,8 @@ class UserInfoModule : public Module
 
 	bool MatchInfo(User* u, const std::string& mask)
 	{
-		irc::commasepstream stream(mask);
-		std::string token;
-		TagInfo ti = parseTagInfo(mask);
 		UserInfo *info = cmd.ext.get_user(u);
-		for (TagInfo::const_iterator it = ti.begin(), it_end = ti.end(); it != it_end; ++it)
-			if ((info->count(it->first) != 0) != it->second)
-				return false;
-
-		return true;
+		return info->MatchTagMask(parseTagMask(mask));
 	}
 
  public:
