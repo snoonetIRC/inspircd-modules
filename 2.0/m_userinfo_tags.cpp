@@ -131,6 +131,7 @@ class UserInfoCommand : public Command
 		std::string seralized = ext.serialize(FORMAT_USER, user, info);
 
 		ServerInstance->PI->SendMetaData(user, ext.name, seralized);
+		return true;
 	}
 
 	CmdResult Handle(const parameterlist& parameters, User* user)
