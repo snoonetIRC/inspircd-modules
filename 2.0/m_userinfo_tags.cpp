@@ -25,6 +25,9 @@ class UserInfoExt : public SimpleExtItem<UserInfo>
 
 	std::string serialize(SerializeFormat format, const Extensible* container, void* item) const
 	{
+		if (!item)
+			return "";
+
 		std::stringstream sstr;
 		UserInfo* data = static_cast<UserInfo*>(item);
 		if (data->empty())
@@ -125,6 +128,12 @@ class UserInfoCommand : public Command
 			TagInfo ti = parseTagInfo(parameters[1]);
 			for (TagInfo::const_iterator it = ti.begin(), it_end = ti.end(); it != it_end; ++it)
 			{
+				if (!isValidTag(it->first))
+				{
+					user->WriteServ("NOTICE %s :Invalid tag name %s", user->nick.c_str(), it->first.c_str());
+					return CMD_FAILURE;
+				}
+
 				if (it->second)
 					info->insert(it->first);
 				else
@@ -147,6 +156,11 @@ class UserInfoCommand : public Command
 		}
 
 		return CMD_SUCCESS;
+	}
+
+	bool isValidTag(const std::string &tag)
+	{
+		return tag.find_first_of(", :") == std::string::npos;
 	}
 };
 
