@@ -245,7 +245,7 @@ class UserInfoModule : public Module
 
 	void OnUserConnect(LocalUser* user)
 	{
-		std::string tag_mask = user->GetClass()->config->getString("userinfo")
+		std::string tag_mask = user->GetClass()->config->getString("userinfo");
 		cmd.ApplyTagMaskToUser(tag_mask, user);
 	}
 
