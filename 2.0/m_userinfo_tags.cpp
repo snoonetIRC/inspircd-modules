@@ -113,6 +113,26 @@ class UserInfoCommand : public Command
 		TRANSLATE3(TR_NICK, TR_TEXT, TR_END);
 	}
 
+	bool ApplyTagMaskToUser(const std::string& mask, User* user)
+	{
+		UserInfo* info = ext.get_user(user);
+		TagInfo ti = parseTagInfo(mask);
+		for (TagInfo::const_iterator it = ti.begin(), it_end = ti.end(); it != it_end; ++it)
+		{
+			if (!isValidTag(it->first))
+				return false;
+
+			if (it->second)
+				info->insert(it->first);
+			else
+				info->erase(it->first);
+		}
+
+		std::string seralized = ext.serialize(FORMAT_USER, user, info);
+
+		ServerInstance->PI->SendMetaData(user, ext.name, seralized);
+	}
+
 	CmdResult Handle(const parameterlist& parameters, User* user)
 	{
 		std::string target = parameters[0];
@@ -123,38 +143,24 @@ class UserInfoCommand : public Command
 			return CMD_FAILURE;
 		}
 
-		UserInfo* info = ext.get_user(target_user);
-
-		std::string seralized = ext.serialize(FORMAT_USER, target_user, info);
 
 		if (parameters.size() > 1)
 		{
-			TagInfo ti = parseTagInfo(parameters[1]);
-			for (TagInfo::const_iterator it = ti.begin(), it_end = ti.end(); it != it_end; ++it)
+			if (!ApplyTagMaskToUser(parameters[1], target_user))
 			{
-				if (!isValidTag(it->first))
-				{
-					user->WriteServ("NOTICE %s :Invalid tag name %s", user->nick.c_str(), it->first.c_str());
-					return CMD_FAILURE;
-				}
-
-				if (it->second)
-					info->insert(it->first);
-				else
-					info->erase(it->first);
+				user->WriteServ("NOTICE %s :Invalid tag name", user->nick.c_str());
+				return CMD_FAILURE;
 			}
-
-			seralized = ext.serialize(FORMAT_USER, target_user, info);
-
-			ServerInstance->PI->SendMetaData(target_user, ext.name, seralized);
 		}
 
+		UserInfo* info = ext.get_user(target_user);
 		if (info->empty())
 		{
 			user->WriteNumeric(RPL_NOTAGS, "%s %s :has no tags", user->nick.c_str(), target_user->nick.c_str());
 		}
 		else
 		{
+			std::string seralized = ext.serialize(FORMAT_USER, target_user, info);
 			user->WriteNumeric(RPL_TAGS, "%s %s %s :has tags", user->nick.c_str(), target_user->nick.c_str(),
 							   seralized.c_str());
 		}
@@ -201,7 +207,7 @@ class UserInfoModule : public Module
 	{
 		ServerInstance->Modules->AddService(cmd);
 		ServerInstance->Modules->AddService(cmd.ext);
-		Implementation eventlist[] = { I_OnCheckBan, I_OnWhois, I_On005Numeric };
+		Implementation eventlist[] = { I_OnRehash, I_OnCheckBan, I_OnWhois, I_OnUserConnect, I_On005Numeric };
 		ServerInstance->Modules->Attach(eventlist, this, sizeof(eventlist)/sizeof(Implementation));
 		OnRehash(NULL);
 	}
@@ -235,6 +241,12 @@ class UserInfoModule : public Module
 
 		std::string serealized = cmd.ext.serialize(FORMAT_USER, dest, info);
 		ServerInstance->SendWhoisLine(user, dest, RPL_TAG_WHOIS, "%s %s :has tags: %s", user->nick.c_str(), dest->nick.c_str(), serealized.c_str());
+	}
+
+	void OnUserConnect(LocalUser* user)
+	{
+		std::string tag_mask = user->GetClass()->config->getString("userinfo")
+		cmd.ApplyTagMaskToUser(tag_mask, user);
 	}
 
 	void On005Numeric(std::string &output)
