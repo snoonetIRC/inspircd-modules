@@ -329,7 +329,9 @@ class UserInfoModule : public Module
 
 	Version GetVersion()
 	{
-		return Version("Adds the ability for opers to associate certain 'tags' with a user.");
+		std::stringstream sstr;
+		sstr << EXTBAN_CHAR << MAX_TAG_LINE;
+		return Version("Adds the ability for opers to associate certain 'tags' with a user.", VF_COMMON, sstr.str());
 	}
 };
 
