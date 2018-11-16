@@ -217,7 +217,7 @@ class TelegrafCommand : public Command
 	RouteDescriptor GetRouting(User *user, const std::vector<std::string> &parameters)
 	{
 		if (parameters.size() > 1)
-			return ROUTE_BROADCAST;
+			return ROUTE_OPT_BCAST;
 		return ROUTE_LOCALONLY;
 	}
 
@@ -361,7 +361,7 @@ class TelegrafModule : public Module
 
 	Version GetVersion()
 	{
-		return Version("Reports ircd stats to a locally running Telegraf instance", VF_COMMON);
+		return Version("Reports ircd stats to a locally running Telegraf instance");
 	}
 };
 
