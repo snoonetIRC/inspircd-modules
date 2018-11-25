@@ -10,7 +10,7 @@ module m_slowmode_user 2.0.34 https://raw.github.com/snoonetIRC/inspircd-modules
 module m_sync_modes 2.0.30 https://raw.github.com/snoonetIRC/inspircd-modules/5ec967b08136b258f7884683fa6a86db008e5887/2.0/m_sync_modes.cpp
  description Adds a command to forcibly sync all channel modes across the network.
  depends core 2.0
-module m_telegraf 2.0.30 https://raw.github.com/snoonetIRC/inspircd-modules/5ec967b08136b258f7884683fa6a86db008e5887/2.0/m_telegraf.cpp
+module m_telegraf 2.0.36 https://raw.github.com/snoonetIRC/inspircd-modules/cde04440cfeec23ece527d9a34d6b7b773540248/2.0/m_telegraf.cpp
  description Provides IRCd metrics to a locally running Telegraf instance.
  depends core 2.0
 module m_userscore 2.0.30 https://raw.github.com/snoonetIRC/inspircd-modules/5ec967b08136b258f7884683fa6a86db008e5887/2.0/m_userscore.cpp
